@@ -1,6 +1,7 @@
 local TargetingHelper = {}
 
 local markers = {}
+local pins = {}
 
 function TargetingHelper.GetLookAtTarget(searchFilter)
 	local player = Game.GetPlayer()
@@ -98,7 +99,7 @@ function TargetingHelper.GetMarkedTargets(autoClear)
 	return targets
 end
 
-function TargetingHelper.UnmarkAll()
+function TargetingHelper.UnmarkTargets()
 	for _, marker in pairs(markers) do
 		Game.GetMappinSystem():UnregisterMappin(marker.mappinId)
 	end
@@ -106,8 +107,42 @@ function TargetingHelper.UnmarkAll()
 	markers = {}
 end
 
+function TargetingHelper.MarkPosition(position)
+	local positionId = tostring(position)
+
+	local mappinData = NewObject('gamemappinsMappinData')
+	mappinData.mappinType = TweakDBID.new('Mappins.DefaultStaticMappin')
+	mappinData.variant = Enum.new('gamedataMappinVariant', 'FastTravelVariant')
+	mappinData.visibleThroughWalls = true
+
+	local mappinId = Game.GetMappinSystem():RegisterMappin(mappinData, position)
+
+	pins[positionId] = { position = position, mappinId = mappinId }
+end
+
+function TargetingHelper.UnmarkPosition(position)
+	local positionId = tostring(position)
+
+	if pins[positionId] then
+		local pin = pins[positionId]
+
+		Game.GetMappinSystem():UnregisterMappin(pin.mappinId)
+
+		pins[positionId] = nil
+	end
+end
+
+function TargetingHelper.UnmarkPositions()
+	for _, pin in pairs(pins) do
+		Game.GetMappinSystem():UnregisterMappin(pin.mappinId)
+	end
+
+	pins = {}
+end
+
 function TargetingHelper.Dispose()
-	TargetingHelper.UnmarkAll()
+	TargetingHelper.UnmarkTargets()
+	TargetingHelper.UnmarkPositions()
 end
 
 return TargetingHelper

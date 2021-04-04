@@ -112,14 +112,14 @@ function AIControl.InterruptCombat(targetPuppet)
 end
 
 function AIControl.TeleportTo(targetPuppet, targetPosition, targetRotation)
-    local teleportCmd = NewObject('handle:AITeleportCommand')
-    teleportCmd.position = targetPosition
-    teleportCmd.rotation = targetRotation or 0.0
-    teleportCmd.doNavTest = false
+	local teleportCmd = NewObject('handle:AITeleportCommand')
+	teleportCmd.position = targetPosition
+	teleportCmd.rotation = targetRotation or 0.0
+	teleportCmd.doNavTest = false
 
-    targetPuppet:GetAIControllerComponent():SendCommand(teleportCmd)
+	targetPuppet:GetAIControllerComponent():SendCommand(teleportCmd)
 
-    return teleportCmd, targetPuppet
+	return teleportCmd, targetPuppet
 end
 
 function AIControl.MoveTo(targetPuppet, targetPosition, targetDistance, movementType)
@@ -135,36 +135,36 @@ function AIControl.MoveTo(targetPuppet, targetPosition, targetDistance, movement
 		movementType = 'Sprint'
 	end
 
-    local worldPosition = NewObject('WorldPosition')
-    GetSingleton('WorldPosition'):SetVector4(worldPosition, targetPosition)
+	local worldPosition = NewObject('WorldPosition')
+	GetSingleton('WorldPosition'):SetVector4(worldPosition, targetPosition)
 
-    local positionSpec = NewObject('AIPositionSpec')
-    GetSingleton('AIPositionSpec'):SetWorldPosition(positionSpec, worldPosition)
+	local positionSpec = NewObject('AIPositionSpec')
+	GetSingleton('AIPositionSpec'):SetWorldPosition(positionSpec, worldPosition)
 
-    local moveCmd = NewObject('handle:AIMoveToCommand')
-    moveCmd.movementTarget = positionSpec
-    moveCmd.movementType = movementType
-    moveCmd.desiredDistanceFromTarget = targetDistance
-    moveCmd.finishWhenDestinationReached = true
-    moveCmd.ignoreNavigation = true
-    moveCmd.useStart = true
-    moveCmd.useStop = true
+	local moveCmd = NewObject('handle:AIMoveToCommand')
+	moveCmd.movementTarget = positionSpec
+	moveCmd.movementType = movementType
+	moveCmd.desiredDistanceFromTarget = targetDistance
+	moveCmd.finishWhenDestinationReached = true
+	moveCmd.ignoreNavigation = true
+	moveCmd.useStart = true
+	moveCmd.useStop = true
 
-    targetPuppet:GetAIControllerComponent():SendCommand(moveCmd)
+	targetPuppet:GetAIControllerComponent():SendCommand(moveCmd)
 
-    return moveCmd, targetPuppet
+	return moveCmd, targetPuppet
 end
 
 function AIControl.HoldFor(targetPuppet, duration)
-    local holdCmd = NewObject('handle:AIHoldPositionCommand')
-    holdCmd.duration = duration or 1.0
+	local holdCmd = NewObject('handle:AIHoldPositionCommand')
+	holdCmd.duration = duration or 1.0
 	holdCmd.ignoreInCombat = false
 	holdCmd.removeAfterCombat = false
 	holdCmd.alwaysUseStealth = false
 
-    targetPuppet:GetAIControllerComponent():SendCommand(holdCmd)
+	targetPuppet:GetAIControllerComponent():SendCommand(holdCmd)
 
-    return holdCmd, targetPuppet
+	return holdCmd, targetPuppet
 end
 
 function AIControl.FollowTarget(targetPuppet, followPuppet, movementType)
@@ -182,8 +182,8 @@ function AIControl.FollowTarget(targetPuppet, followPuppet, movementType)
 		movementType = 'Sprint'
 	end
 
-    local followCmd = NewObject('handle:AIFollowTargetCommand')
-    followCmd.target = followPuppet
+	local followCmd = NewObject('handle:AIFollowTargetCommand')
+	followCmd.target = followPuppet
 	followCmd.lookAtTarget = followPuppet
 	followCmd.desiredDistance = 1.0
 	followCmd.tolerance = 0.5
@@ -195,9 +195,9 @@ function AIControl.FollowTarget(targetPuppet, followPuppet, movementType)
 	followCmd.removeAfterCombat = false
 	followCmd.alwaysUseStealth = false
 
-    targetPuppet:GetAIControllerComponent():SendCommand(followCmd)
+	targetPuppet:GetAIControllerComponent():SendCommand(followCmd)
 
-    return followCmd, targetPuppet
+	return followCmd, targetPuppet
 end
 
 function AIControl.InterruptBehavior(targetPuppet)

@@ -33,8 +33,14 @@ registerHotkey('MoveMarkedNPC', 'Send marked NPCs to palyer', function()
 		movePosition.x = movePosition.x + moveOffsetX
 		movePosition.y = movePosition.y + moveOffsetY
 
+		-- Clone position for closures
+		local pinPosition = ToVector4(movePosition)
+
+		-- Place a pin that would be removed when task is completed
+		TargetingHelper.MarkPosition(pinPosition)
+
 		-- Make NPC react faster to the next command
-		-- before the first command in the chain
+		-- before the first command is in the chain
 		if not AIControl.HasQueue(target) then
 			AIControl.InterruptBehavior(target)
 		end
@@ -46,6 +52,8 @@ registerHotkey('MoveMarkedNPC', 'Send marked NPCs to palyer', function()
 
 		-- Stay for half a sec after reaching a position
 		AIControl.QueueTask(target, function()
+			TargetingHelper.UnmarkPosition(pinPosition)
+
 			return AIControl.HoldFor(target, 0.5)
 		end)
 
