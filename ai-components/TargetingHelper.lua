@@ -7,7 +7,7 @@ function TargetingHelper.GetLookAtTarget(searchFilter)
 
 	local searchQuery = NewObject('gameTargetSearchQuery')
 	searchQuery.searchFilter = searchFilter or Game['TSF_NPC;']()
-	searchQuery.maxDistance = Game['SNameplateRangesData::GetDisplayRange;']()
+	searchQuery.maxDistance = Game['SNameplateRangesData::GetMaxDisplayRange;']()
 
 	return Game.GetTargetingSystem():GetObjectClosestToCrosshair(player, NewObject('EulerAngles'), searchQuery)
 end
@@ -17,7 +17,7 @@ function TargetingHelper.GetLookAtTargets(searchFilter)
 
 	local searchQuery = NewObject('gameTargetSearchQuery')
 	searchQuery.searchFilter = searchFilter or Game['TSF_NPC;']()
-	searchQuery.maxDistance = Game['SNameplateRangesData::GetDisplayRange;']()
+	searchQuery.maxDistance = Game['SNameplateRangesData::GetMaxDisplayRange;']()
 
 	local success, targetParts = Game.GetTargetingSystem():GetTargetParts(player, searchQuery)
 	local targets = {}
@@ -104,6 +104,10 @@ function TargetingHelper.UnmarkAll()
 	end
 
 	markers = {}
+end
+
+function TargetingHelper.Dispose()
+	TargetingHelper.UnmarkAll()
 end
 
 return TargetingHelper

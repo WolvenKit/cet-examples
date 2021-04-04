@@ -1,5 +1,5 @@
-local AIControl = require('AIControl')
 local TargetingHelper = require('TargetingHelper')
+local AIControl = require('AIControl')
 
 registerHotkey('SelectNPC', 'Mark / Unmark NPC', function()
 	local target = TargetingHelper.GetLookAtTarget()
@@ -20,6 +20,7 @@ registerHotkey('MoveMarkedNPC', 'Send marked NPCs to palyer', function()
 	local playerForward = player:GetWorldForward()
 	local playerPosition = player:GetWorldPosition()
 
+	local moveOffsetX, moveOffsetY = 0, 0.5
 	local movePosition = Vector4.new(
 		playerPosition.x + playerForward.x * 2,
 		playerPosition.y + playerForward.y * 2,
@@ -28,8 +29,27 @@ registerHotkey('MoveMarkedNPC', 'Send marked NPCs to palyer', function()
 	)
 
 	for _, target in pairs(targets) do
-		AIControl.ResetBehavior(target) -- Make NPC react faster to the next command
-		AIControl.MoveTo(target, movePosition)
+		-- Give NPSs some space
+		movePosition.x = movePosition.x + moveOffsetX
+		movePosition.y = movePosition.y + moveOffsetY
+
+		-- Make NPC react faster to the next command
+		-- before the first command in the chain
+		if not AIControl.HasQueue(target) then
+			AIControl.InterruptBehavior(target)
+		end
+
+		-- Task function should return a command
+		AIControl.QueueTask(target, function()
+			return AIControl.MoveTo(target, movePosition)
+		end)
+
+		-- Stay for half a sec after reaching a position
+		AIControl.QueueTask(target, function()
+			return AIControl.HoldFor(target, 0.5)
+		end)
+
+		moveOffsetX, moveOffsetY = moveOffsetY, moveOffsetX
 	end
 end)
 
@@ -90,24 +110,24 @@ registerForEvent('onInit', function()
 	-- Free follower when NPC is detached
 	Observe('ScriptedPuppet', 'OnDetach', function(self)
 		if self and self:IsA('NPCPuppet') then
-			AIControl.FreeFollower(self)
 			TargetingHelper.UnmarkTarget(self)
+			AIControl.FreeFollower(self)
 		end
 	end)
 
 	-- Maintain the correct state on session end
 	Observe('RadialWheelController', 'RegisterBlackboards', function(_, loaded)
 		if not loaded then
-			AIControl.FreeFollowers()
-			TargetingHelper.UnmarkAll()
+			TargetingHelper.Dispose()
+			AIControl.Dispose()
 		end
 	end)
 end)
 
 -- Maintain the correct state on "Reload All Mods"
 registerForEvent('onShutdown', function()
-	AIControl.FreeFollowers()
-	TargetingHelper.UnmarkAll()
+	TargetingHelper.Dispose()
+	AIControl.Dispose()
 end)
 
 registerForEvent('onUpdate', function(delta)

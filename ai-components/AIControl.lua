@@ -6,6 +6,10 @@ local followers = {}
 local followTimer = 0.0
 local followInterval = 5.0
 
+local queues = {}
+local queueTimer = 0.0
+local queueInterval = 0.02
+
 function AIControl.MakeFriendly(targetPuppet, friendPuppet)
 	if not friendPuppet then
 		friendPuppet = Game.GetPlayer()
@@ -114,6 +118,8 @@ function AIControl.TeleportTo(targetPuppet, targetPosition, targetRotation)
     teleportCmd.doNavTest = false
 
     targetPuppet:GetAIControllerComponent():SendCommand(teleportCmd)
+
+    return teleportCmd, targetPuppet
 end
 
 function AIControl.MoveTo(targetPuppet, targetPosition, targetDistance, movementType)
@@ -138,11 +144,15 @@ function AIControl.MoveTo(targetPuppet, targetPosition, targetDistance, movement
     local moveCmd = NewObject('handle:AIMoveToCommand')
     moveCmd.movementTarget = positionSpec
     moveCmd.movementType = movementType
-    moveCmd.finishWhenDestinationReached = true
     moveCmd.desiredDistanceFromTarget = targetDistance
+    moveCmd.finishWhenDestinationReached = true
     moveCmd.ignoreNavigation = true
+    moveCmd.useStart = true
+    moveCmd.useStop = true
 
     targetPuppet:GetAIControllerComponent():SendCommand(moveCmd)
+
+    return moveCmd, targetPuppet
 end
 
 function AIControl.HoldFor(targetPuppet, duration)
@@ -153,6 +163,8 @@ function AIControl.HoldFor(targetPuppet, duration)
 	holdCmd.alwaysUseStealth = false
 
     targetPuppet:GetAIControllerComponent():SendCommand(holdCmd)
+
+    return holdCmd, targetPuppet
 end
 
 function AIControl.FollowTarget(targetPuppet, followPuppet, movementType)
@@ -177,19 +189,68 @@ function AIControl.FollowTarget(targetPuppet, followPuppet, movementType)
 	followCmd.tolerance = 0.5
 	followCmd.movementType = movementType
 	followCmd.matchSpeed = true
-	followCmd.teleport = true
+	followCmd.teleport = false
 	followCmd.stopWhenDestinationReached = false
 	followCmd.ignoreInCombat = false
 	followCmd.removeAfterCombat = false
 	followCmd.alwaysUseStealth = false
 
     targetPuppet:GetAIControllerComponent():SendCommand(followCmd)
+
+    return followCmd, targetPuppet
 end
 
-function AIControl.ResetBehavior(targetPuppet)
+function AIControl.InterruptBehavior(targetPuppet)
 	local orientation = GetSingleton('Quaternion'):ToEulerAngles(targetPuppet:GetWorldTransform().Orientation)
 
-	AIControl.TeleportTo(targetPuppet, targetPuppet:GetWorldPosition(), orientation.roll)
+	return AIControl.TeleportTo(targetPuppet, targetPuppet:GetWorldPosition(), orientation.roll)
+end
+
+function AIControl.IsCommandActive(targetPuppet, commandInstance)
+	return GetSingleton('AIbehaviorUniqueActiveCommandList'):IsActionCommandById(
+		targetPuppet:GetAIControllerComponent().activeCommands,
+		commandInstance.id
+	)
+end
+
+function AIControl.HasQueue(targetPuppet)
+	return queues[TargetingHelper.GetTargetId(targetPuppet)] ~= nil
+end
+
+function AIControl.QueueTask(targetPuppet, commandTask)
+	local targetId = TargetingHelper.GetTargetId(targetPuppet)
+
+	local queue = queues[targetId]
+
+	if not queue then
+		queue = {
+			target = targetPuppet,
+			tasks = {},
+			wait = nil,
+		}
+
+		queues[targetId] = queue
+	end
+
+	if not queue.wait then
+		queue.wait = commandTask()
+	else
+		table.insert(queue.tasks, commandTask)
+	end
+end
+
+function AIControl.QueueTasks(targetPuppet, ...)
+	for i = 1, select('#', ...) do
+		AIControl.QueueTask(targetPuppet, (select(i, ...)))
+	end
+end
+
+function AIControl.ClearQueues()
+	for _, queue in pairs(queues) do
+		queue.target:GetAIControllerComponent():CancelCommand(queue.wait)
+	end
+
+	queues = {}
 end
 
 function AIControl.UpdateTasks(delta)
@@ -207,6 +268,28 @@ function AIControl.UpdateTasks(delta)
 
 		followTimer = followTimer - followInterval
 	end
+
+	queueTimer = queueTimer + delta
+
+	if queueTimer >= queueInterval then
+		for key, queue in pairs(queues) do
+			if not AIControl.IsCommandActive(queue.target, queue.wait) then
+				if #queue.tasks > 0 then
+					queue.wait = queue.tasks[1]()
+					table.remove(queue.tasks, 1)
+				else
+					queues[key] = nil
+				end
+			end
+		end
+
+		queueTimer = queueTimer - queueInterval
+	end
+end
+
+function AIControl.Dispose()
+	AIControl.FreeFollowers()
+	AIControl.ClearQueues()
 end
 
 return AIControl
