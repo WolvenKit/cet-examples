@@ -10,6 +10,16 @@ local queues = {}
 local queueTimer = 0.0
 local queueInterval = 0.02
 
+local function ToPositionSpec(targetPosition)
+	local worldPosition = NewObject('WorldPosition')
+	GetSingleton('WorldPosition'):SetVector4(worldPosition, targetPosition)
+
+	local positionSpec = NewObject('AIPositionSpec')
+	GetSingleton('AIPositionSpec'):SetWorldPosition(positionSpec, worldPosition)
+
+	return positionSpec
+end
+
 function AIControl.MakeFriendly(targetPuppet, friendPuppet)
 	if not friendPuppet then
 		friendPuppet = Game.GetPlayer()
@@ -111,6 +121,32 @@ function AIControl.InterruptCombat(targetPuppet)
 	Game['NPCPuppet::ChangeStanceState;GameObjectgamedataNPCStanceState'](targetPuppet, 'Relaxed')
 end
 
+function AIControl.LookAt(targetPuppet, lookAtPuppet, duration)
+	if not lookAtPuppet then
+		lookAtPuppet = Game.GetPlayer()
+	end
+
+	targetPuppet:GetStimReactionComponent():ActivateReactionLookAt(lookAtPuppet, duration and true or false, false, duration, true)
+end
+
+function AIControl.StopLookAt(targetPuppet)
+	targetPuppet:GetStimReactionComponent():DeactiveLookAt(false)
+end
+
+function AIControl.RotateTo(targetPuppet, targetPosition)
+	local positionSpec = ToPositionSpec(targetPosition)
+
+	local rotateCmd = NewObject('handle:AIRotateToCommand')
+	rotateCmd.target = positionSpec
+	rotateCmd.angleTolerance = 5.0 -- If zero then command will never finish
+	rotateCmd.angleOffset = 0.0
+	rotateCmd.speed = 1.0
+
+	targetPuppet:GetAIControllerComponent():SendCommand(rotateCmd)
+
+	return rotateCmd, targetPuppet
+end
+
 function AIControl.TeleportTo(targetPuppet, targetPosition, targetRotation)
 	local teleportCmd = NewObject('handle:AITeleportCommand')
 	teleportCmd.position = targetPosition
@@ -132,14 +168,10 @@ function AIControl.MoveTo(targetPuppet, targetPosition, targetDistance, movement
 	end
 
 	if not movementType then
-		movementType = 'Sprint'
+		movementType = 'Run'
 	end
 
-	local worldPosition = NewObject('WorldPosition')
-	GetSingleton('WorldPosition'):SetVector4(worldPosition, targetPosition)
-
-	local positionSpec = NewObject('AIPositionSpec')
-	GetSingleton('AIPositionSpec'):SetWorldPosition(positionSpec, worldPosition)
+	local positionSpec = ToPositionSpec(targetPosition)
 
 	local moveCmd = NewObject('handle:AIMoveToCommand')
 	moveCmd.movementTarget = positionSpec
@@ -148,7 +180,7 @@ function AIControl.MoveTo(targetPuppet, targetPosition, targetDistance, movement
 	moveCmd.finishWhenDestinationReached = true
 	moveCmd.ignoreNavigation = true
 	moveCmd.useStart = true
-	moveCmd.useStop = true
+	moveCmd.useStop = false
 
 	targetPuppet:GetAIControllerComponent():SendCommand(moveCmd)
 
@@ -217,6 +249,7 @@ function AIControl.HasQueue(targetPuppet)
 	return queues[TargetingHelper.GetTargetId(targetPuppet)] ~= nil
 end
 
+-- Task function should return a command
 function AIControl.QueueTask(targetPuppet, commandTask)
 	local targetId = TargetingHelper.GetTargetId(targetPuppet)
 
@@ -274,10 +307,19 @@ function AIControl.UpdateTasks(delta)
 	if queueTimer >= queueInterval then
 		for key, queue in pairs(queues) do
 			if not AIControl.IsCommandActive(queue.target, queue.wait) then
-				if #queue.tasks > 0 then
-					queue.wait = queue.tasks[1]()
+				repeat
+					local task = queue.tasks[1]
+					local command = task()
+
 					table.remove(queue.tasks, 1)
-				else
+
+					if command and command:IsA('AICommand') then
+						queue.wait = command
+						break
+					end
+				until #queue.tasks == 0
+
+				if #queue.tasks == 0 then
 					queues[key] = nil
 				end
 			end

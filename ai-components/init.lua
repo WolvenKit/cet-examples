@@ -33,28 +33,40 @@ registerHotkey('MoveMarkedNPC', 'Send marked NPCs to palyer', function()
 		movePosition.x = movePosition.x + moveOffsetX
 		movePosition.y = movePosition.y + moveOffsetY
 
-		-- Clone position for closures
-		local pinPosition = ToVector4(movePosition)
-
-		-- Place a pin that would be removed when task is completed
-		TargetingHelper.MarkPosition(pinPosition)
-
 		-- Make NPC react faster to the next command
 		-- before the first command is in the chain
 		if not AIControl.HasQueue(target) then
 			AIControl.InterruptBehavior(target)
 		end
 
-		-- Task function should return a command
+		-- Clone position for closures
+		local pinPosition = ToVector4(movePosition)
+
+		-- Place a pin that would be removed when task is completed
+		TargetingHelper.MarkPosition(pinPosition)
+
+		-- Move to the position while looking at the player
 		AIControl.QueueTask(target, function()
+			AIControl.LookAt(target, player)
+
 			return AIControl.MoveTo(target, movePosition)
 		end)
 
-		-- Stay for half a sec after reaching a position
+		-- Rotate to the player on arrival
 		AIControl.QueueTask(target, function()
 			TargetingHelper.UnmarkPosition(pinPosition)
 
-			return AIControl.HoldFor(target, 0.5)
+			return AIControl.RotateTo(target, player:GetWorldPosition())
+		end)
+
+		-- Stay for a sec after reaching a position
+		AIControl.QueueTask(target, function()
+			return AIControl.HoldFor(target, 1.0)
+		end)
+
+		-- Stop looking at the player
+		AIControl.QueueTask(target, function()
+			AIControl.StopLookAt(target)
 		end)
 
 		moveOffsetX, moveOffsetY = moveOffsetY, moveOffsetX
