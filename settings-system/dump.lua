@@ -96,6 +96,8 @@ local function exportTo(exportPath, isPreGame)
 			end
 
 			options = ' -- ' .. table.concat(options, ' | ')
+		elseif var.step then
+			options = (' -- %.2f to %.2f / %.2f'):format(var.min, var.max, var.step)
 		end
 
 		table.insert(output, ('  ["%s"] = %s,%s'):format(var.path, value, options or ''))
