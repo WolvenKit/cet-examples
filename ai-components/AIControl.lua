@@ -118,7 +118,6 @@ function AIControl.InterruptCombat(targetPuppet)
 	Game['NPCPuppet::ChangeHighLevelState;GameObjectgamedataNPCHighLevelState'](targetPuppet, 'Relaxed')
 	Game['NPCPuppet::ChangeDefenseModeState;GameObjectgamedataDefenseMode'](targetPuppet, 'NoDefend')
 	Game['NPCPuppet::ChangeUpperBodyState;GameObjectgamedataNPCUpperBodyState'](targetPuppet, 'Normal')
-	Game['NPCPuppet::ChangeStanceState;GameObjectgamedataNPCStanceState'](targetPuppet, 'Relaxed')
 end
 
 function AIControl.LookAt(targetPuppet, lookAtPuppet, duration)
@@ -278,12 +277,29 @@ function AIControl.QueueTasks(targetPuppet, ...)
 	end
 end
 
-function AIControl.ClearQueues()
-	for _, queue in pairs(queues) do
-		queue.target:GetAIControllerComponent():CancelCommand(queue.wait)
-	end
+function AIControl.ClearQueue(targetPuppet)
+	local targetId = TargetingHelper.GetTargetId(targetPuppet)
+	local queue = queues[targetId]
 
-	queues = {}
+	if queue then
+		if queue.target:IsAttached() then
+			queue.target:GetAIControllerComponent():CancelCommand(queue.wait)
+			queue.target:GetStimReactionComponent():DeactiveLookAt(false)
+		end
+
+		queues[targetId] = nil
+	end
+end
+
+function AIControl.ClearQueues()
+	for targetId, queue in pairs(queues) do
+		if queue.target:IsAttached() then
+			queue.target:GetAIControllerComponent():CancelCommand(queue.wait)
+			queue.target:GetStimReactionComponent():DeactiveLookAt(false)
+		end
+
+		queues[targetId] = nil
+	end
 end
 
 function AIControl.UpdateTasks(delta)
