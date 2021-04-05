@@ -171,7 +171,7 @@ function AIControl.FollowTarget(targetPuppet, followPuppet, movementType)
 	if not followPuppet then
 		local currentRole = targetPuppet:GetAIControllerComponent():GetAIRole()
 
-		if currentRole or currentRole:IsA('AIFollowerRole') then
+		if currentRole and currentRole:IsA('AIFollowerRole') then
 			followPuppet = currentRole.followTarget
 		else
 			followPuppet = Game.GetPlayer()

@@ -29,7 +29,7 @@ registerHotkey('MoveMarkedNPC', 'Send marked NPCs to palyer', function()
 	)
 
 	for _, target in pairs(targets) do
-		-- Give NPSs some space
+		-- Give NPCs some space
 		movePosition.x = movePosition.x + moveOffsetX
 		movePosition.y = movePosition.y + moveOffsetY
 
@@ -77,7 +77,7 @@ registerHotkey('TeleportMarkedNPC', 'Teleport marked NPCs to palyer', function()
 	)
 
 	for _, target in pairs(targets) do
-		-- Give NPSs some space
+		-- Give NPCs some space
 		teleportPosition.x = teleportPosition.x + teleportOffsetX
 		teleportPosition.y = teleportPosition.y + teleportOffsetY
 

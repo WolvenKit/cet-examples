@@ -33,12 +33,8 @@ end)
 registerHotkey('ToggleHUD', 'Toggle HUD', function()
 	local settingsSystem = Game.GetSettingsSystem()
 
-	-- Read the state of the first hud option
 	local hudGroup = settingsSystem:GetGroup('/interface/hud')
-	local hudState = hudGroup:GetVar('healthbar'):GetValue()
-
-	-- Invert the state
-	local newState = not hudState --
+	local newState = not hudGroup:GetVar('healthbar'):GetValue()
 
 	for _, var in ipairs(hudGroup:GetVars(false)) do
 		var:SetValue(newState)
