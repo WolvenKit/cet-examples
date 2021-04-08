@@ -3,8 +3,11 @@
 ### Features
 
 - Install Iconic weapons effects in the regular mod slots
-- All weapon and mod data is pulled from TweakDB at runtime
-- ImGui filterable list for adding mods to the inventory
+- Traverse TweakDB records to find all Iconic mods
+- Update TweakDB records to make Iconic mods installable into weapon slots
+- Decoupling of UI and logic
+- UI scaling based on user font size setting
+- Filterable list for adding mods to the inventory
 
 ### References
 

@@ -3,8 +3,8 @@ local ModOverride = {}
 local ready = false
 local items = {}
 
--- Find all iconic weapon + mod pairs
-function ModOverride.Discover()
+-- Find all iconic pairs of weapon + mod
+local function discoverIconicMods()
 	local iconicMods = {}
 	local iconicModifer = TweakDB:GetRecord('Quality.IconicItem')
 	local weaponRecords = TweakDB:GetRecords('gamedataWeaponItem_Record')
@@ -35,9 +35,7 @@ function ModOverride.Discover()
 end
 
 -- Make given mods available for player
-function ModOverride.Unlock(iconicMods)
-	items = {}
-
+local function unlockIconicMods(iconicMods)
 	local slots = {
 		['AttachmentSlots.GenericWeaponMod'] = 4,
 		['AttachmentSlots.MeleeWeaponMod'] = 3,
@@ -74,8 +72,29 @@ function ModOverride.Unlock(iconicMods)
 			TweakDB:SetFlatNoUpdate(TweakDBID.new(modId, '.placementSlots'), slotList)
 			TweakDB:Update(modId)
 		end
+	end
+end
 
-		table.insert(items, ModOverride.MakeItem(iconic))
+local function prepareItemList(iconicMods)
+	items = {}
+
+	for _, iconic in pairs(iconicMods) do
+		local weaponName = Game.GetLocalizedTextByKey(iconic.weaponRecord:DisplayName())
+		local weaponDesc = Game.GetLocalizedTextByKey(iconic.weaponRecord:LocalizedDescription())
+		local abilityDesc = Game.GetLocalizedText(iconic.modRecord:GetOnAttachItem(0):UIData():LocalizedDescription())
+		local weaponTag = iconic.weaponTag:gsub('_', ' '):gsub('^' .. weaponName .. ' ', '')
+
+		local item = {}
+
+		item.id = iconic.modRecord:GetID()
+		item.label = ('%s %q'):format(weaponTag, weaponName:gsub('%%', '%%%%'))
+
+		item.abilityDesc = abilityDesc:gsub('%%', '%%%%')
+		item.weaponDesc = weaponDesc:gsub('%%', '%%%%')
+
+		item.filter = item.label:upper()
+
+		table.insert(items, item)
 	end
 
 	table.sort(items, function(a, b)
@@ -83,14 +102,10 @@ function ModOverride.Unlock(iconicMods)
 	end)
 end
 
-function ModOverride.IsReady()
-	return ready
-end
-
 function ModOverride.Init()
-	local iconicMods = ModOverride.Discover()
-
-	ModOverride.Unlock(iconicMods)
+	local iconicMods = discoverIconicMods()
+	unlockIconicMods(iconicMods)
+	prepareItemList(iconicMods)
 
 	-- Initital state
 	ready = Game.GetPlayer():IsAttached() and not GetSingleton('inkMenuScenario'):GetSystemRequestsHandler():IsPreGame()
@@ -101,23 +116,8 @@ function ModOverride.Init()
 	end)
 end
 
-function ModOverride.MakeItem(iconic)
-	local weaponName = Game.GetLocalizedTextByKey(iconic.weaponRecord:DisplayName())
-	local weaponDesc = Game.GetLocalizedTextByKey(iconic.weaponRecord:LocalizedDescription())
-	local abilityDesc = Game.GetLocalizedText(iconic.modRecord:GetOnAttachItem(0):UIData():LocalizedDescription())
-	local weaponTag = iconic.weaponTag:gsub('_', ' '):gsub('^' .. weaponName .. ' ', '')
-
-	local item = {}
-
-	item.id = iconic.modRecord:GetID()
-	item.label = ('%s %q'):format(weaponTag, weaponName:gsub('%%', '%%%%'))
-
-	item.abilityDesc = abilityDesc:gsub('%%', '%%%%')
-	item.weaponDesc = weaponDesc:gsub('%%', '%%%%')
-
-	item.filter = item.label:upper()
-
-	return item
+function ModOverride.IsReady()
+	return ready
 end
 
 function ModOverride.GetItems(filter)
