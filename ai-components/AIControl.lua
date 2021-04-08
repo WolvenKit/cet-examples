@@ -56,9 +56,17 @@ function AIControl.IsFollower(targetPuppet)
 end
 
 function AIControl.MakeFollower(targetPuppet, movementType)
+	if not targetPuppet:IsAttached() then
+		return false
+	end
+
 	local currentRole = targetPuppet:GetAIControllerComponent():GetAIRole()
 
 	if currentRole then
+		if targetPuppet:IsCrowd() and currentRole:IsA('AIFollowerRole') then
+			return true
+		end
+
 		currentRole:OnRoleCleared(targetPuppet)
 	end
 
@@ -79,6 +87,8 @@ function AIControl.MakeFollower(targetPuppet, movementType)
 	targetPuppet.isPlayerCompanionCachedTimeStamp = 0
 
 	followers[TargetingHelper.GetTargetId(targetPuppet)] = targetPuppet
+
+	return true
 end
 
 function AIControl.FreeFollower(targetPuppet)
@@ -86,22 +96,28 @@ function AIControl.FreeFollower(targetPuppet)
 		local currentRole = targetPuppet:GetAIControllerComponent():GetAIRole()
 
 		if currentRole and currentRole:IsA('AIFollowerRole') then
-			currentRole:OnRoleCleared(targetPuppet)
+			if targetPuppet:IsCrowd() then
+				targetPuppet:Dispose() -- Can't change roles more than once on crowd npc
+			else
+				currentRole:OnRoleCleared(targetPuppet)
 
-			local noRole = NewObject('handle:AINoRole')
+				local noRole = NewObject('handle:AINoRole')
 
-			targetPuppet:GetAIControllerComponent():SetAIRole(noRole)
-			targetPuppet:GetAIControllerComponent():OnAttach()
+				targetPuppet:GetAIControllerComponent():SetAIRole(noRole)
+				targetPuppet:GetAIControllerComponent():OnAttach()
 
-			AIControl.MakeNeutral(targetPuppet)
+				AIControl.MakeNeutral(targetPuppet)
 
-			-- Restore sense preset
-			local sensePreset = targetPuppet:GetRecord():SensePreset():GetID()
-			Game['senseComponent::RequestPresetChange;GameObjectTweakDBIDBool'](targetPuppet, sensePreset, true)
+				-- Restore sense preset
+				local sensePreset = targetPuppet:GetRecord():SensePreset():GetID()
+				Game['senseComponent::RequestPresetChange;GameObjectTweakDBIDBool'](targetPuppet, sensePreset, true)
+			end
 		end
 	end
 
 	followers[TargetingHelper.GetTargetId(targetPuppet)] = nil
+
+	return true
 end
 
 function AIControl.FreeFollowers()
