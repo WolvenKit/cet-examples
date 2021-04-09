@@ -163,9 +163,13 @@ function AIControl.RotateTo(targetPuppet, targetPosition)
 end
 
 function AIControl.TeleportTo(targetPuppet, targetPosition, targetRotation)
+	if not targetRotation then
+		targetRotation = targetPuppet:GetWorldYaw()
+	end
+
 	local teleportCmd = NewObject('handle:AITeleportCommand')
 	teleportCmd.position = targetPosition
-	teleportCmd.rotation = targetRotation or 0.0
+	teleportCmd.rotation = targetRotation
 	teleportCmd.doNavTest = false
 
 	targetPuppet:GetAIControllerComponent():SendCommand(teleportCmd)
@@ -248,9 +252,7 @@ function AIControl.FollowTarget(targetPuppet, followPuppet, movementType)
 end
 
 function AIControl.InterruptBehavior(targetPuppet)
-	local orientation = GetSingleton('Quaternion'):ToEulerAngles(targetPuppet:GetWorldTransform().Orientation)
-
-	return AIControl.TeleportTo(targetPuppet, targetPuppet:GetWorldPosition(), orientation.roll)
+	return AIControl.TeleportTo(targetPuppet, targetPuppet:GetWorldPosition())
 end
 
 function AIControl.IsCommandActive(targetPuppet, commandInstance)
