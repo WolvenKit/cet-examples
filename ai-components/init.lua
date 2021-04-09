@@ -17,22 +17,10 @@ registerHotkey('MoveMarkedNPC', 'Send marked NPCs to palyer', function()
 	local player = Game.GetPlayer()
 	local targets = TargetingHelper.GetMarkedTargets()
 
-	local playerForward = player:GetWorldForward()
-	local playerPosition = player:GetWorldPosition()
-
+	local movePosition = TargetingHelper.GetLookAtPosition()
 	local moveOffsetX, moveOffsetY = 0, 0.5
-	local movePosition = Vector4.new(
-		playerPosition.x + playerForward.x * 2,
-		playerPosition.y + playerForward.y * 2,
-		playerPosition.z,
-		playerPosition.w
-	)
 
 	for _, target in pairs(targets) do
-		-- Give NPCs some space
-		movePosition.x = movePosition.x + moveOffsetX
-		movePosition.y = movePosition.y + moveOffsetY
-
 		-- Make NPC react faster to the next command
 		-- before the first command is in the chain
 		if not AIControl.HasQueue(target) then
@@ -69,32 +57,27 @@ registerHotkey('MoveMarkedNPC', 'Send marked NPCs to palyer', function()
 			AIControl.StopLookAt(target)
 		end)
 
+		-- Give next NPC some space
+		movePosition.x = movePosition.x + moveOffsetX
+		movePosition.y = movePosition.y + moveOffsetY
+
 		moveOffsetX, moveOffsetY = moveOffsetY, moveOffsetX
 	end
 end)
 
 registerHotkey('TeleportMarkedNPC', 'Teleport marked NPCs to palyer', function()
-	local player = Game.GetPlayer()
 	local targets = TargetingHelper.GetMarkedTargets()
 
-	local playerForward = player:GetWorldForward()
-	local playerPosition = player:GetWorldPosition()
-
+	local teleportPosition = TargetingHelper.GetLookAtPosition()
 	local teleportOffsetX, teleportOffsetY = 0, 0.5
-	local teleportPosition = Vector4.new(
-		playerPosition.x + playerForward.x * 3,
-		playerPosition.y + playerForward.y * 3,
-		playerPosition.z,
-		playerPosition.w
-	)
 
 	for _, target in pairs(targets) do
-		-- Give NPCs some space
+		AIControl.TeleportTo(target, teleportPosition)
+		AIControl.HoldFor(target, 3.0) -- Stay for 3 secs after teleport
+
+		-- Give next NPC some space
 		teleportPosition.x = teleportPosition.x + teleportOffsetX
 		teleportPosition.y = teleportPosition.y + teleportOffsetY
-
-		AIControl.TeleportTo(target, teleportPosition)
-		AIControl.HoldFor(target, 5.0) -- Stay for 5 secs after teleport
 
 		teleportOffsetX, teleportOffsetY = teleportOffsetY, teleportOffsetX
 	end

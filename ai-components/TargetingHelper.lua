@@ -3,7 +3,86 @@ local TargetingHelper = {}
 local markers = {}
 local pins = {}
 
-function TargetingHelper.GetLookAtTarget(searchFilter)
+local function getLookAtPositionReal(distance)
+	if not distance then
+		distance = 100
+	end
+
+	local player = Game.GetPlayer()
+	local position, forward = Game.GetTargetingSystem():GetCrosshairData(player)
+
+	local from = position
+	local to = Vector4.new(
+		position.x + forward.x * distance,
+		position.y + forward.y * distance,
+		position.z + forward.z * distance,
+		position.w
+	)
+
+	local filters = {
+		'Dynamic',
+		'Vehicle',
+		'Static',
+		'Water',
+		'Terrain',
+		'PlayerBlocker',
+	}
+
+	local results = {}
+
+	for _, filter in ipairs(filters) do
+		local success, result = Game.GetSpatialQueriesSystem():SyncRaycastByCollisionGroup(from, to, filter, false, false)
+
+		if success then
+			table.insert(results, {
+				distance = GetSingleton('Vector4'):Distance(position, ToVector4(result.position)),
+				position = ToVector4(result.position),
+				normal = result.normal,
+				--material = result.material,
+			})
+		end
+	end
+
+	if #results == 0 then
+		return nil
+	end
+
+	local nearest = results[1]
+
+	for i = 2, #results do
+		if results[i].distance < nearest.distance then
+			nearest = results[i]
+		end
+	end
+
+	return nearest.position, nearest.normal
+end
+
+local function getLookAtPositionFallback()
+	local player = Game.GetPlayer()
+
+	local playerForward = player:GetWorldForward()
+	local playerPosition = player:GetWorldPosition()
+
+	return Vector4.new(
+		playerPosition.x + playerForward.x * 2.5,
+		playerPosition.y + playerForward.y * 2.5,
+		playerPosition.z,
+		playerPosition.w
+	)
+end
+
+local function getLookAtTargetReal(searchFilter)
+	local player = Game.GetPlayer()
+
+	local searchQuery = NewObject('gameTargetSearchQuery')
+	searchQuery.searchFilter = searchFilter or Game['TSF_NPC;']()
+	searchQuery.maxDistance = Game['SNameplateRangesData::GetMaxDisplayRange;']()
+
+	return Game.GetTargetingSystem():GetObjectClosestToCrosshair(player, searchQuery)
+end
+
+local function getLookAtTargetFallback(searchFilter)
 	local player = Game.GetPlayer()
 
 	local searchQuery = NewObject('gameTargetSearchQuery')
@@ -11,6 +90,31 @@ function TargetingHelper.GetLookAtTarget(searchFilter)
 	searchQuery.maxDistance = Game['SNameplateRangesData::GetMaxDisplayRange;']()
 
 	return Game.GetTargetingSystem():GetObjectClosestToCrosshair(player, NewObject('EulerAngles'), searchQuery)
+end
+
+local function inititalizeMethods()
+	-- Test if `SyncRaycastByCollisionGroup` is available
+	local success, result = Game.GetSpatialQueriesSystem():SyncRaycastByCollisionGroup(Vector4.new(0,0,0,0), Vector4.new(0,0,0,0), 'Static', false, false)
+	if success ~= nil and result ~= nil then
+		TargetingHelper.GetLookAtPosition = getLookAtPositionReal
+		TargetingHelper.GetLookAtTarget = getLookAtTargetReal
+	else
+		print('[Targeting Helper] Ray casting is not available.')
+		TargetingHelper.GetLookAtPosition = getLookAtPositionFallback
+		TargetingHelper.GetLookAtTarget = getLookAtTargetFallback
+	end
+end
+
+function TargetingHelper.GetLookAtPosition(distance)
+	inititalizeMethods()
+
+	return TargetingHelper.GetLookAtPosition(distance)
+end
+
+function TargetingHelper.GetLookAtTarget(searchFilter)
+	inititalizeMethods()
+
+	return TargetingHelper.GetLookAtTarget(searchFilter)
 end
 
 function TargetingHelper.GetLookAtTargets(searchFilter)
@@ -107,12 +211,12 @@ function TargetingHelper.UnmarkTargets()
 	markers = {}
 end
 
-function TargetingHelper.MarkPosition(position)
+function TargetingHelper.MarkPosition(position, variant)
 	local positionId = tostring(position)
 
 	local mappinData = NewObject('gamemappinsMappinData')
 	mappinData.mappinType = TweakDBID.new('Mappins.DefaultStaticMappin')
-	mappinData.variant = Enum.new('gamedataMappinVariant', 'FastTravelVariant')
+	mappinData.variant = Enum.new('gamedataMappinVariant', variant or 'AimVariant')
 	mappinData.visibleThroughWalls = true
 
 	local mappinId = Game.GetMappinSystem():RegisterMappin(mappinData, position)
