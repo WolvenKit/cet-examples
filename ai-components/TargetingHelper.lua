@@ -9,23 +9,21 @@ local function getLookAtPositionReal(distance)
 	end
 
 	local player = Game.GetPlayer()
-	local position, forward = Game.GetTargetingSystem():GetCrosshairData(player)
-
-	local from = position
+	local from, forward = Game.GetTargetingSystem():GetCrosshairData(player)
 	local to = Vector4.new(
-		position.x + forward.x * distance,
-		position.y + forward.y * distance,
-		position.z + forward.z * distance,
-		position.w
+		from.x + forward.x * distance,
+		from.y + forward.y * distance,
+		from.z + forward.z * distance,
+		from.w
 	)
 
 	local filters = {
-		'Dynamic',
+		'Dynamic', -- Movable Objects
 		'Vehicle',
-		'Static',
+		'Static', -- Buildings, Concrete Roads, Crates, etc.
 		'Water',
 		'Terrain',
-		'PlayerBlocker',
+		'PlayerBlocker', -- Trees, Billboards, Barriers
 	}
 
 	local results = {}
@@ -35,10 +33,11 @@ local function getLookAtPositionReal(distance)
 
 		if success then
 			table.insert(results, {
-				distance = GetSingleton('Vector4'):Distance(position, ToVector4(result.position)),
+				distance = GetSingleton('Vector4'):Distance(from, ToVector4(result.position)),
 				position = ToVector4(result.position),
 				normal = result.normal,
-				--material = result.material,
+				material = result.material,
+				collision = CName.new(filter),
 			})
 		end
 	end
@@ -55,7 +54,7 @@ local function getLookAtPositionReal(distance)
 		end
 	end
 
-	return nearest.position, nearest.normal
+	return nearest.position
 end
 
 local function getLookAtPositionFallback()

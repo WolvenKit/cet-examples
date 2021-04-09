@@ -14,10 +14,14 @@ registerHotkey('SelectNPC', 'Mark / Unmark NPC', function()
 end)
 
 registerHotkey('MoveMarkedNPC', 'Send marked NPCs to palyer', function()
-	local player = Game.GetPlayer()
 	local targets = TargetingHelper.GetMarkedTargets()
-
 	local movePosition = TargetingHelper.GetLookAtPosition()
+
+	if #targets == 0 or not movePosition then
+		return
+	end
+
+	local player = Game.GetPlayer()
 	local moveOffsetX, moveOffsetY = 0, 0.5
 
 	for _, target in pairs(targets) do
@@ -67,8 +71,12 @@ end)
 
 registerHotkey('TeleportMarkedNPC', 'Teleport marked NPCs to palyer', function()
 	local targets = TargetingHelper.GetMarkedTargets()
-
 	local teleportPosition = TargetingHelper.GetLookAtPosition()
+
+	if #targets == 0 or not teleportPosition then
+		return
+	end
+
 	local teleportOffsetX, teleportOffsetY = 0, 0.5
 
 	for _, target in pairs(targets) do
