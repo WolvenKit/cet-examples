@@ -107,12 +107,16 @@ function ModOverride.Init()
 	unlockIconicMods(iconicMods)
 	prepareItemList(iconicMods)
 
-	-- Initital state
-	ready = Game.GetPlayer():IsAttached() and not GetSingleton('inkMenuScenario'):GetSystemRequestsHandler():IsPreGame()
+	local player = Game.GetPlayer()
+	local isPreGame = GetSingleton('inkMenuScenario'):GetSystemRequestsHandler():IsPreGame()
+	ready = player and player:IsAttached() and not isPreGame
 
-	-- Observe game session
-	Observe('RadialWheelController', 'RegisterBlackboards', function(_, loaded)
-		ready = loaded
+	Observe('QuestTrackerGameController', 'OnInitialize', function()
+		ready = true
+	end)
+
+	Observe('QuestTrackerGameController', 'OnUninitialize', function()
+		ready = Game.GetPlayer() ~= nil
 	end)
 end
 

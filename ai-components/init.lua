@@ -127,8 +127,8 @@ registerForEvent('onInit', function()
 	end)
 
 	-- Maintain the correct state on session end
-	Observe('RadialWheelController', 'RegisterBlackboards', function(_, loaded)
-		if not loaded then
+	Observe('QuestTrackerGameController', 'OnUninitialize', function()
+		if Game.GetPlayer() == nil then
 			TargetingHelper.Dispose()
 			AIControl.Dispose()
 		end
