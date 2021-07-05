@@ -1,8 +1,10 @@
-# Iconic Mods Example
+# Weapon Mod Override Example
 
 ### Features
 
 - Install Iconic weapons effects in the regular mod slots
+- Install sniper scopes on handguns and rifles
+- Install rifle scopes on handguns
 - Traverse TweakDB records to find all Iconic mods
 - Update TweakDB records to make Iconic mods installable into weapon slots
 - Decoupling of UI and logic

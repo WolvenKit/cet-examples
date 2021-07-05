@@ -12,9 +12,9 @@ registerForEvent('onInit', function()
 		return ModOverride.GetItems(filter)
 	end)
 
-	UI.OnAddToInventory(function(item)
+	UI.OnAddToInventory(function(iconicMod)
 		local player = Game.GetPlayer()
-		local itemId = GetSingleton('gameItemID'):FromTDBID(item.id)
+		local itemId = ItemID.FromTDBID(iconicMod.recorId)
 
 		Game.GetTransactionSystem():GiveItem(player, itemId, 1)
 	end)

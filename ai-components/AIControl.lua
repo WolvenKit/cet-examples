@@ -10,16 +10,20 @@ local queues = {}
 local queueTimer = 0.0
 local queueInterval = 0.02
 
+---@param targetPosition Vector4
+---@return AIPositionSpec
 local function ToPositionSpec(targetPosition)
-	local worldPosition = NewObject('WorldPosition')
-	GetSingleton('WorldPosition'):SetVector4(worldPosition, targetPosition)
+	local worldPosition = WorldPosition.new()
+	worldPosition:SetVector4(targetPosition)
 
-	local positionSpec = NewObject('AIPositionSpec')
-	GetSingleton('AIPositionSpec'):SetWorldPosition(positionSpec, worldPosition)
+	local positionSpec = AIPositionSpec.new()
+	positionSpec:SetWorldPosition(worldPosition)
 
 	return positionSpec
 end
 
+---@param targetPuppet ScriptedPuppet
+---@param friendPuppet ScriptedPuppet
 function AIControl.MakeFriendly(targetPuppet, friendPuppet)
 	if not friendPuppet then
 		friendPuppet = Game.GetPlayer()
@@ -27,9 +31,11 @@ function AIControl.MakeFriendly(targetPuppet, friendPuppet)
 
 	-- Set NPC attitude to friendly
 	targetPuppet:GetAttitudeAgent():SetAttitudeGroup(friendPuppet:GetAttitudeAgent():GetAttitudeGroup())
-	targetPuppet:GetAttitudeAgent():SetAttitudeTowards(friendPuppet:GetAttitudeAgent(), 'AIA_Friendly')
+	targetPuppet:GetAttitudeAgent():SetAttitudeTowards(friendPuppet:GetAttitudeAgent(), EAIAttitude.AIA_Friendly)
 end
 
+---@param targetPuppet ScriptedPuppet
+---@param friendPuppet ScriptedPuppet
 function AIControl.MakeNeutral(targetPuppet, friendPuppet)
 	if not friendPuppet then
 		friendPuppet = Game.GetPlayer()
@@ -37,24 +43,31 @@ function AIControl.MakeNeutral(targetPuppet, friendPuppet)
 
 	-- Restore NPC original group
 	targetPuppet:GetAttitudeAgent():SetAttitudeGroup(targetPuppet:GetRecord():BaseAttitudeGroup())
-	targetPuppet:GetAttitudeAgent():SetAttitudeTowards(friendPuppet:GetAttitudeAgent(), 'AIA_Neutral')
+	targetPuppet:GetAttitudeAgent():SetAttitudeTowards(friendPuppet:GetAttitudeAgent(), EAIAttitude.AIA_Neutral)
 end
 
+---@param targetPuppet ScriptedPuppet
+---@param friendPuppet ScriptedPuppet
 function AIControl.MakePsycho(targetPuppet, friendPuppet)
 	if not friendPuppet then
 		friendPuppet = Game.GetPlayer()
 	end
 
 	targetPuppet:GetAttitudeAgent():SetAttitudeGroup('HostileToEveryone')
-	targetPuppet:GetAttitudeAgent():SetAttitudeTowards(friendPuppet:GetAttitudeAgent(), 'AIA_Neutral')
+	targetPuppet:GetAttitudeAgent():SetAttitudeTowards(friendPuppet:GetAttitudeAgent(), EAIAttitude.AIA_Neutral)
 end
 
+---@param targetPuppet ScriptedPuppet
+---@return boolean
 function AIControl.IsFollower(targetPuppet)
 	local currentRole = targetPuppet:GetAIControllerComponent():GetAIRole()
 
 	return currentRole and currentRole:IsA('AIFollowerRole')
 end
 
+---@param targetPuppet ScriptedPuppet
+---@param movementType moveMovementType
+---@return boolean
 function AIControl.MakeFollower(targetPuppet, movementType)
 	if not targetPuppet:IsAttached() then
 		return false
@@ -70,18 +83,18 @@ function AIControl.MakeFollower(targetPuppet, movementType)
 		currentRole:OnRoleCleared(targetPuppet)
 	end
 
-	local followerRole = NewObject('handle:AIFollowerRole')
+	local followerRole = AIFollowerRole.new()
 	followerRole.followerRef = Game.CreateEntityReference('#player', {})
 
 	targetPuppet:GetAIControllerComponent():SetAIRole(followerRole)
 	targetPuppet:GetAIControllerComponent():OnAttach()
 
-	targetPuppet:GetMovePolicesComponent():ChangeMovementType(movementType or 'Sprint')
+	targetPuppet:GetMovePolicesComponent():ChangeMovementType(movementType or moveMovementType.Sprint)
 
 	AIControl.MakeFriendly(targetPuppet)
 
 	for _, followerPuppet in pairs(followers) do
-		followerPuppet:GetAttitudeAgent():SetAttitudeTowards(targetPuppet:GetAttitudeAgent(), 'AIA_Friendly')
+		followerPuppet:GetAttitudeAgent():SetAttitudeTowards(targetPuppet:GetAttitudeAgent(), EAIAttitude.AIA_Friendly)
 	end
 
 	targetPuppet.isPlayerCompanionCachedTimeStamp = 0
@@ -91,6 +104,8 @@ function AIControl.MakeFollower(targetPuppet, movementType)
 	return true
 end
 
+---@param targetPuppet ScriptedPuppet
+---@return boolean
 function AIControl.FreeFollower(targetPuppet)
 	if targetPuppet:IsAttached() then
 		local currentRole = targetPuppet:GetAIControllerComponent():GetAIRole()
@@ -101,7 +116,7 @@ function AIControl.FreeFollower(targetPuppet)
 			else
 				currentRole:OnRoleCleared(targetPuppet)
 
-				local noRole = NewObject('handle:AINoRole')
+				local noRole = AINoRole.new()
 
 				targetPuppet:GetAIControllerComponent():SetAIRole(noRole)
 				targetPuppet:GetAIControllerComponent():OnAttach()
@@ -110,7 +125,7 @@ function AIControl.FreeFollower(targetPuppet)
 
 				-- Restore sense preset
 				local sensePreset = targetPuppet:GetRecord():SensePreset():GetID()
-				Game['senseComponent::RequestPresetChange;GameObjectTweakDBIDBool'](targetPuppet, sensePreset, true)
+				SenseComponent.RequestPresetChange(targetPuppet, sensePreset, true)
 			end
 		end
 	end
@@ -126,16 +141,20 @@ function AIControl.FreeFollowers()
 	end
 end
 
+---@param targetPuppet ScriptedPuppet
 function AIControl.InterruptCombat(targetPuppet)
 	-- Clear threats in case NPC is aggroed
 	targetPuppet:GetTargetTrackerComponent():ClearThreats()
 
 	-- Reset NPC state to relaxed
-	Game['NPCPuppet::ChangeHighLevelState;GameObjectgamedataNPCHighLevelState'](targetPuppet, 'Relaxed')
-	Game['NPCPuppet::ChangeDefenseModeState;GameObjectgamedataDefenseMode'](targetPuppet, 'NoDefend')
-	Game['NPCPuppet::ChangeUpperBodyState;GameObjectgamedataNPCUpperBodyState'](targetPuppet, 'Normal')
+	NPCPuppet.ChangeHighLevelState(targetPuppet, gamedataNPCHighLevelState.Relaxed)
+	NPCPuppet.ChangeDefenseModeState(targetPuppet, gamedataDefenseMode.NoDefend)
+	NPCPuppet.ChangeUpperBodyState(targetPuppet, gamedataNPCUpperBodyState.Normal)
 end
 
+---@param targetPuppet ScriptedPuppet
+---@param lookAtPuppet ScriptedPuppet
+---@param duration Float|nil
 function AIControl.LookAt(targetPuppet, lookAtPuppet, duration)
 	if not lookAtPuppet then
 		lookAtPuppet = Game.GetPlayer()
@@ -144,14 +163,18 @@ function AIControl.LookAt(targetPuppet, lookAtPuppet, duration)
 	targetPuppet:GetStimReactionComponent():ActivateReactionLookAt(lookAtPuppet, duration and true or false, false, duration, true)
 end
 
+---@param targetPuppet ScriptedPuppet
 function AIControl.StopLookAt(targetPuppet)
 	targetPuppet:GetStimReactionComponent():DeactiveLookAt(false)
 end
 
+---@param targetPuppet ScriptedPuppet
+---@param targetPosition Vector4
+---@return AIRotateToCommand
 function AIControl.RotateTo(targetPuppet, targetPosition)
 	local positionSpec = ToPositionSpec(targetPosition)
 
-	local rotateCmd = NewObject('handle:AIRotateToCommand')
+	local rotateCmd = AIRotateToCommand.new()
 	rotateCmd.target = positionSpec
 	rotateCmd.angleTolerance = 5.0 -- If zero then command will never finish
 	rotateCmd.angleOffset = 0.0
@@ -162,12 +185,16 @@ function AIControl.RotateTo(targetPuppet, targetPosition)
 	return rotateCmd, targetPuppet
 end
 
+---@param targetPuppet ScriptedPuppet
+---@param targetPosition Vector4
+---@param targetRotation Float
+---@return AITeleportCommand
 function AIControl.TeleportTo(targetPuppet, targetPosition, targetRotation)
 	if not targetRotation then
 		targetRotation = targetPuppet:GetWorldYaw()
 	end
 
-	local teleportCmd = NewObject('handle:AITeleportCommand')
+	local teleportCmd = AITeleportCommand.new()
 	teleportCmd.position = targetPosition
 	teleportCmd.rotation = targetRotation
 	teleportCmd.doNavTest = false
@@ -177,6 +204,11 @@ function AIControl.TeleportTo(targetPuppet, targetPosition, targetRotation)
 	return teleportCmd, targetPuppet
 end
 
+---@param targetPuppet ScriptedPuppet
+---@param targetPosition Vector4
+---@param targetDistance Float
+---@param movementType moveMovementType
+---@return AIMoveToCommand
 function AIControl.MoveTo(targetPuppet, targetPosition, targetDistance, movementType)
 	if not targetPosition then
 		targetPosition = Game.GetPlayer():GetWorldPosition()
@@ -187,12 +219,12 @@ function AIControl.MoveTo(targetPuppet, targetPosition, targetDistance, movement
 	end
 
 	if not movementType then
-		movementType = 'Run'
+		movementType = moveMovementType.Run
 	end
 
 	local positionSpec = ToPositionSpec(targetPosition)
 
-	local moveCmd = NewObject('handle:AIMoveToCommand')
+	local moveCmd = AIMoveToCommand.new()
 	moveCmd.movementTarget = positionSpec
 	moveCmd.movementType = movementType
 	moveCmd.desiredDistanceFromTarget = targetDistance
@@ -206,8 +238,11 @@ function AIControl.MoveTo(targetPuppet, targetPosition, targetDistance, movement
 	return moveCmd, targetPuppet
 end
 
+---@param targetPuppet ScriptedPuppet
+---@param duration Float|nil
+---@return AIHoldPositionCommand
 function AIControl.HoldFor(targetPuppet, duration)
-	local holdCmd = NewObject('handle:AIHoldPositionCommand')
+	local holdCmd = AIHoldPositionCommand.new()
 	holdCmd.duration = duration or 1.0
 	holdCmd.ignoreInCombat = false
 	holdCmd.removeAfterCombat = false
@@ -218,8 +253,13 @@ function AIControl.HoldFor(targetPuppet, duration)
 	return holdCmd, targetPuppet
 end
 
+---@param targetPuppet ScriptedPuppet
+---@param followPuppet ScriptedPuppet
+---@param movementType moveMovementType
+---@return AIFollowTargetCommand
 function AIControl.FollowTarget(targetPuppet, followPuppet, movementType)
 	if not followPuppet then
+		---@type AIFollowerRole
 		local currentRole = targetPuppet:GetAIControllerComponent():GetAIRole()
 
 		if currentRole and currentRole:IsA('AIFollowerRole') then
@@ -230,10 +270,10 @@ function AIControl.FollowTarget(targetPuppet, followPuppet, movementType)
 	end
 
 	if not movementType then
-		movementType = 'Sprint'
+		movementType = moveMovementType.Sprint
 	end
 
-	local followCmd = NewObject('handle:AIFollowTargetCommand')
+	local followCmd = AIFollowTargetCommand.new()
 	followCmd.target = followPuppet
 	followCmd.lookAtTarget = followPuppet
 	followCmd.desiredDistance = 1.0
@@ -251,22 +291,30 @@ function AIControl.FollowTarget(targetPuppet, followPuppet, movementType)
 	return followCmd, targetPuppet
 end
 
+---@param targetPuppet ScriptedPuppet
+---@return AITeleportCommand
 function AIControl.InterruptBehavior(targetPuppet)
 	return AIControl.TeleportTo(targetPuppet, targetPuppet:GetWorldPosition())
 end
 
+---@param targetPuppet ScriptedPuppet
+---@param commandInstance AICommand
+---@return boolean
 function AIControl.IsCommandActive(targetPuppet, commandInstance)
-	return GetSingleton('AIbehaviorUniqueActiveCommandList'):IsActionCommandById(
+	return AIbehaviorUniqueActiveCommandList.IsActionCommandById(
 		targetPuppet:GetAIControllerComponent().activeCommands,
 		commandInstance.id
 	)
 end
 
+---@param targetPuppet ScriptedPuppet
+---@return boolean
 function AIControl.HasQueue(targetPuppet)
 	return queues[TargetingHelper.GetTargetId(targetPuppet)] ~= nil
 end
 
--- Task function should return a command
+---@param targetPuppet ScriptedPuppet
+---@param commandTask function Task function must return a command instance
 function AIControl.QueueTask(targetPuppet, commandTask)
 	local targetId = TargetingHelper.GetTargetId(targetPuppet)
 
@@ -289,12 +337,15 @@ function AIControl.QueueTask(targetPuppet, commandTask)
 	end
 end
 
+---@param targetPuppet ScriptedPuppet
+---@vararg function
 function AIControl.QueueTasks(targetPuppet, ...)
 	for i = 1, select('#', ...) do
 		AIControl.QueueTask(targetPuppet, (select(i, ...)))
 	end
 end
 
+---@param targetPuppet ScriptedPuppet
 function AIControl.ClearQueue(targetPuppet)
 	local targetId = TargetingHelper.GetTargetId(targetPuppet)
 	local queue = queues[targetId]
@@ -320,6 +371,7 @@ function AIControl.ClearQueues()
 	end
 end
 
+---@param delta number
 function AIControl.UpdateTasks(delta)
 	followTimer = followTimer + delta
 

@@ -44,8 +44,8 @@ local function unlockIconicMods(iconicMods)
 	for _, iconic in pairs(iconicMods) do
 		local modId = iconic.modRecord:GetID()
 		local weaponId = iconic.weaponRecord:GetID()
-		local weaponName = TweakDB:GetFlat(TweakDBID.new(weaponId, '.displayName'))
-		local slotList = TweakDB:GetFlat(TweakDBID.new(modId, '.placementSlots'))
+		local weaponName = TweakDB:GetFlat(weaponId .. '.displayName')
+		local slotList = TweakDB:GetFlat(modId .. '.placementSlots')
 
 		-- Iconic mods are allowed to be installed in only one slot
 		-- If there is more than one slot then TweakDB is modified
@@ -56,7 +56,7 @@ local function unlockIconicMods(iconicMods)
 					local slotUnlocked = false
 
 					for _, unlockedId in ipairs(slotList) do
-						if tostring(slotId) == tostring(unlockedId) then
+						if slotId == unlockedId then
 							slotUnlocked = true
 							break
 						end
@@ -68,8 +68,8 @@ local function unlockIconicMods(iconicMods)
 				end
 			end
 
-			TweakDB:SetFlatNoUpdate(TweakDBID.new(modId, '.displayName'), weaponName)
-			TweakDB:SetFlatNoUpdate(TweakDBID.new(modId, '.placementSlots'), slotList)
+			TweakDB:SetFlatNoUpdate(modId .. '.displayName', weaponName)
+			TweakDB:SetFlatNoUpdate(modId .. '.placementSlots', slotList)
 			TweakDB:Update(modId)
 		end
 	end
@@ -86,7 +86,7 @@ local function prepareItemList(iconicMods)
 
 		local item = {}
 
-		item.id = iconic.modRecord:GetID()
+		item.recorId = iconic.modRecord:GetID()
 		item.label = ('%s %q'):format(weaponTag, weaponName:gsub('%%', '%%%%'))
 
 		item.abilityDesc = abilityDesc:gsub('%%', '%%%%')
@@ -102,13 +102,44 @@ local function prepareItemList(iconicMods)
 	end)
 end
 
+local function unlockScopes(targetList, sourceList)
+	local targetParts = TweakDB:GetFlat(targetList .. '.itemPartList')
+	local sourceParts = TweakDB:GetFlat(sourceList .. '.itemPartList')
+
+	for _, sourcePartId in ipairs(sourceParts) do
+		local isPartUnlocked = false
+
+		for _, targetPartId in ipairs(targetParts) do
+			if sourcePartId == targetPartId then
+				isPartUnlocked = true
+				break
+			end
+		end
+
+		if not isPartUnlocked then
+			table.insert(targetParts, sourcePartId)
+		end
+	end
+
+	TweakDB:SetFlatNoUpdate(targetList .. '.itemPartList', targetParts)
+	TweakDB:Update(targetList)
+end
+
+local function unlockAllScopes()
+	unlockScopes('Items.HandgunPossibleScopesList', 'Items.RiflePossibleScopesList')
+	unlockScopes('Items.HandgunPossibleScopesList', 'Items.SniperPossibleScopesList')
+	unlockScopes('Items.RiflePossibleScopesList', 'Items.SniperPossibleScopesList')
+end
+
 function ModOverride.Init()
 	local iconicMods = discoverIconicMods()
 	unlockIconicMods(iconicMods)
 	prepareItemList(iconicMods)
 
+	unlockAllScopes()
+
 	local player = Game.GetPlayer()
-	local isPreGame = GetSingleton('inkMenuScenario'):GetSystemRequestsHandler():IsPreGame()
+	local isPreGame = Game.GetSystemRequestsHandler():IsPreGame()
 	ready = player and player:IsAttached() and not isPreGame
 
 	Observe('QuestTrackerGameController', 'OnInitialize', function()

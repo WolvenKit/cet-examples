@@ -26,13 +26,11 @@ end
 registerForEvent('onInit', function()
 	printLoggingState()
 
-	local ListenerAction = GetSingleton('gameinputScriptListenerAction')
-
-	Observe('PlayerPuppet', 'OnAction', function(action)
+	Observe('PlayerPuppet', 'OnAction', function(_, action)
 		if enableLogging then
-			local actionName = Game.NameToString(ListenerAction:GetName(action))
-			local actionType = ListenerAction:GetType(action).value -- gameinputActionType
-			local actionValue = ListenerAction:GetValue(action)
+			local actionName = Game.NameToString(action:GetName())
+			local actionType = action:GetType().value -- gameinputActionType
+			local actionValue = action:GetValue()
 
 			if not ignoreActions[actionType] or not ignoreActions[actionType][actionName] then
 				spdlog.info(('[%s] %s = %.3f'):format(actionType, actionName, actionValue))
@@ -62,12 +60,10 @@ end)
 An example of reading specific player actions
 
 registerForEvent('onInit', function()
-	local ListenerAction = GetSingleton('gameinputScriptListenerAction')
-
-	Observe('PlayerPuppet', 'OnAction', function(action)
-		local actionName = Game.NameToString(ListenerAction:GetName(action))
-		local actionType = ListenerAction:GetType(action).value -- gameinputActionType
-		local actionValue = ListenerAction:GetValue(action)
+	Observe('PlayerPuppet', 'OnAction', function(_, action)
+		local actionName = Game.NameToString(ListenerAction.GetName(action))
+		local actionType = ListenerAction.GetType(action).value -- gameinputActionType
+		local actionValue = ListenerAction.GetValue(action)
 
 		if actionName == 'Forward' or actionName == 'Back' then
 			if actionType == 'BUTTON_PRESSED' then

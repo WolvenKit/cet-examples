@@ -1,7 +1,7 @@
 registerHotkey('PlaceCustomMapPin', 'Place a map pin at player\'s position', function()
-	local mappinData = NewObject('gamemappinsMappinData')
-	mappinData.mappinType = TweakDBID.new('Mappins.DefaultStaticMappin')
-	mappinData.variant = Enum.new('gamedataMappinVariant', 'FastTravelVariant')
+	local mappinData = MappinData.new()
+	mappinData.mappinType = 'Mappins.DefaultStaticMappin'
+	mappinData.variant = gamedataMappinVariant.FastTravelVariant
 	mappinData.visibleThroughWalls = true
 	
 	local position = Game.GetPlayer():GetWorldPosition()
@@ -13,9 +13,9 @@ registerHotkey('PlaceObjectMapPin', 'Place a map pin on the target', function()
 	local target = Game.GetTargetingSystem():GetLookAtObject(Game.GetPlayer(), false, false)
 	
 	if target then
-		local mappinData = NewObject('gamemappinsMappinData')
-		mappinData.mappinType = TweakDBID.new('Mappins.DefaultStaticMappin')
-		mappinData.variant = Enum.new('gamedataMappinVariant', 'FastTravelVariant')
+		local mappinData = MappinData.new()
+		mappinData.mappinType = 'Mappins.DefaultStaticMappin'
+		mappinData.variant = gamedataMappinVariant.FastTravelVariant
 		mappinData.visibleThroughWalls = true
 		
 		local slot = CName.new('poi_mappin')

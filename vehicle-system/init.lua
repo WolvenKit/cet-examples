@@ -8,14 +8,14 @@ local targetVehicles = {
 }
 
 local function unlockVehicles(vehicles)
-	local unlockableVehicles = TweakDB:GetFlat(TweakDBID.new('Vehicle.vehicle_list.list'))
+	local unlockableVehicles = TweakDB:GetFlat('Vehicle.vehicle_list.list')
 
 	for _, vehiclePath in ipairs(vehicles) do
 		local targetVehicleTweakDbId = TweakDBID.new(vehiclePath)
 		local isVehicleUnlockable = false
 
 		for _, unlockableVehicleTweakDbId in ipairs(unlockableVehicles) do
-			if tostring(unlockableVehicleTweakDbId) == tostring(targetVehicleTweakDbId) then
+			if unlockableVehicleTweakDbId == targetVehicleTweakDbId then
 				isVehicleUnlockable = true
 				break
 			end
@@ -26,15 +26,15 @@ local function unlockVehicles(vehicles)
 		end
 	end
 
-	TweakDB:SetFlat(TweakDBID.new('Vehicle.vehicle_list.list'), unlockableVehicles)
+	TweakDB:SetFlat('Vehicle.vehicle_list.list', unlockableVehicles)
 end
 
 local function summonVehicle(vehiclePath)
 	local vehicleSystem = Game.GetVehicleSystem()
 
-	local garageVehicleId = GetSingleton('vehicleGarageVehicleID'):Resolve(vehiclePath)
-	vehicleSystem:TogglePlayerActiveVehicle(garageVehicleId, 'Car', true)
-	vehicleSystem:SpawnPlayerVehicle('Car')
+	local garageVehicleId = GarageVehicleID.Resolve(vehiclePath)
+	vehicleSystem:TogglePlayerActiveVehicle(garageVehicleId, gamedataVehicleType.Car, true)
+	vehicleSystem:SpawnPlayerVehicle(gamedataVehicleType.Car)
 end
 
 -- If you change the vehicle list and reload the mod,

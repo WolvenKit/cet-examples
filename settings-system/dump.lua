@@ -53,7 +53,7 @@ local function exportVars(isPreGame, group, output)
 	end
 
 	if type(isPreGame) ~= 'bool' then
-		isPreGame = GetSingleton('inkMenuScenario'):GetSystemRequestsHandler():IsPreGame()
+		isPreGame = Game.GetSystemRequestsHandler():IsPreGame()
 	end
 
 	if not output then

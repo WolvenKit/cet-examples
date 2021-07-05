@@ -3,7 +3,9 @@ local TargetingHelper = {}
 local markers = {}
 local pins = {}
 
-local function getLookAtPositionReal(distance)
+---@param distance number
+---@return Vector4
+function TargetingHelper.GetLookAtPosition(distance)
 	if not distance then
 		distance = 100
 	end
@@ -33,7 +35,7 @@ local function getLookAtPositionReal(distance)
 
 		if success then
 			table.insert(results, {
-				distance = GetSingleton('Vector4'):Distance(from, ToVector4(result.position)),
+				distance = Vector4.Distance(from, ToVector4(result.position)),
 				position = ToVector4(result.position),
 				normal = result.normal,
 				material = result.material,
@@ -57,78 +59,33 @@ local function getLookAtPositionReal(distance)
 	return nearest.position
 end
 
-local function getLookAtPositionFallback()
+---@param searchFilter gameTargetSearchFilter|nil
+---@return gameObject
+function TargetingHelper.GetLookAtTarget(searchFilter)
 	local player = Game.GetPlayer()
 
-	local playerForward = player:GetWorldForward()
-	local playerPosition = player:GetWorldPosition()
-
-	return Vector4.new(
-		playerPosition.x + playerForward.x * 2.5,
-		playerPosition.y + playerForward.y * 2.5,
-		playerPosition.z,
-		playerPosition.w
-	)
-end
-
-local function getLookAtTargetReal(searchFilter)
-	local player = Game.GetPlayer()
-
-	local searchQuery = NewObject('gameTargetSearchQuery')
+	local searchQuery = TargetSearchQuery.new()
 	searchQuery.searchFilter = searchFilter or Game['TSF_NPC;']()
-	searchQuery.maxDistance = Game['SNameplateRangesData::GetMaxDisplayRange;']()
+	searchQuery.maxDistance = SNameplateRangesData.GetMaxDisplayRange()
 
 	return Game.GetTargetingSystem():GetObjectClosestToCrosshair(player, searchQuery)
 end
 
-local function getLookAtTargetFallback(searchFilter)
-	local player = Game.GetPlayer()
-
-	local searchQuery = NewObject('gameTargetSearchQuery')
-	searchQuery.searchFilter = searchFilter or Game['TSF_NPC;']()
-	searchQuery.maxDistance = Game['SNameplateRangesData::GetMaxDisplayRange;']()
-
-	return Game.GetTargetingSystem():GetObjectClosestToCrosshair(player, NewObject('EulerAngles'), searchQuery)
-end
-
-local function inititalizeMethods()
-	-- Test if `SyncRaycastByCollisionGroup` is available
-	local success, result = Game.GetSpatialQueriesSystem():SyncRaycastByCollisionGroup(Vector4.new(0,0,0,0), Vector4.new(0,0,0,0), 'Static', false, false)
-	if success ~= nil and result ~= nil then
-		TargetingHelper.GetLookAtPosition = getLookAtPositionReal
-		TargetingHelper.GetLookAtTarget = getLookAtTargetReal
-	else
-		print('[Targeting Helper] Ray casting is not available.')
-		TargetingHelper.GetLookAtPosition = getLookAtPositionFallback
-		TargetingHelper.GetLookAtTarget = getLookAtTargetFallback
-	end
-end
-
-function TargetingHelper.GetLookAtPosition(distance)
-	inititalizeMethods()
-
-	return TargetingHelper.GetLookAtPosition(distance)
-end
-
-function TargetingHelper.GetLookAtTarget(searchFilter)
-	inititalizeMethods()
-
-	return TargetingHelper.GetLookAtTarget(searchFilter)
-end
-
+---@param searchFilter gameTargetSearchFilter|nil
+---@return gameObject[]
 function TargetingHelper.GetLookAtTargets(searchFilter)
 	local player = Game.GetPlayer()
 
-	local searchQuery = NewObject('gameTargetSearchQuery')
+	local searchQuery = TargetSearchQuery.new()
 	searchQuery.searchFilter = searchFilter or Game['TSF_NPC;']()
-	searchQuery.maxDistance = Game['SNameplateRangesData::GetMaxDisplayRange;']()
+	searchQuery.maxDistance = SNameplateRangesData.GetMaxDisplayRange()
 
 	local success, targetParts = Game.GetTargetingSystem():GetTargetParts(player, searchQuery)
 	local targets = {}
 
 	if success then
 		for _, targetPart in ipairs(targetParts) do
-			local component = GetSingleton('gametargetingTargetPartInfo'):GetComponent(targetPart)
+			local component = targetPart:GetComponent()
 
 			local target = component:GetEntity()
 			local targetId = tostring(target:GetEntityID().hash)
@@ -140,30 +97,37 @@ function TargetingHelper.GetLookAtTargets(searchFilter)
 	return targets
 end
 
+---@param target gameObject
+---@return boolean
 function TargetingHelper.IsActive(target)
 	return target:IsAttached()
 		and not target:IsDeadNoStatPool()
 		and not target:IsTurnedOffNoStatusEffect()
-		and not Game['ScriptedPuppet::IsDefeated;GameObject'](target)
-		and not Game['ScriptedPuppet::IsUnconscious;GameObject'](target)
+		and not ScriptedPuppet.IsDefeated(target)
+		and not ScriptedPuppet.IsUnconscious(target)
 end
 
+---@param target gameObject
+---@return string
 function TargetingHelper.GetTargetId(target)
 	return tostring(target:GetEntityID().hash)
 end
 
+---@param target gameObject
+---@return boolean
 function TargetingHelper.IsTargetMarked(target)
 	local targetId = TargetingHelper.GetTargetId(target)
 
 	return markers[targetId] ~= nil
 end
 
+---@param target gameObject
 function TargetingHelper.MarkTarget(target)
 	local targetId = TargetingHelper.GetTargetId(target)
 
-	local mappinData = NewObject('gamemappinsMappinData')
-	mappinData.mappinType = TweakDBID.new('Mappins.DefaultStaticMappin')
-	mappinData.variant = Enum.new('gamedataMappinVariant', 'TakeControlVariant')
+	local mappinData = MappinData.new()
+	mappinData.mappinType = 'Mappins.DefaultStaticMappin'
+	mappinData.variant = gamedataMappinVariant.TakeControlVariant
 	mappinData.visibleThroughWalls = true
 
 	local mappinId = Game.GetMappinSystem():RegisterMappinWithObject(mappinData, target, 'poi_mappin', Vector3.new(0, 0, 2.0))
@@ -171,6 +135,7 @@ function TargetingHelper.MarkTarget(target)
 	markers[targetId] = { target = target, mappinId = mappinId }
 end
 
+---@param target gameObject
 function TargetingHelper.UnmarkTarget(target)
 	local targetId = TargetingHelper.GetTargetId(target)
 
@@ -183,6 +148,8 @@ function TargetingHelper.UnmarkTarget(target)
 	end
 end
 
+---@param autoClear boolean
+---@return gameObject[]
 function TargetingHelper.GetMarkedTargets(autoClear)
 	-- Auto clear is ON by default
 	if autoClear == nil then
@@ -210,12 +177,14 @@ function TargetingHelper.UnmarkTargets()
 	markers = {}
 end
 
+---@param position Vector4
+---@param variant gamedataMappinVariant
 function TargetingHelper.MarkPosition(position, variant)
 	local positionId = tostring(position)
 
-	local mappinData = NewObject('gamemappinsMappinData')
-	mappinData.mappinType = TweakDBID.new('Mappins.DefaultStaticMappin')
-	mappinData.variant = Enum.new('gamedataMappinVariant', variant or 'AimVariant')
+	local mappinData = MappinData.new()
+	mappinData.mappinType = 'Mappins.DefaultStaticMappin'
+	mappinData.variant = variant or gamedataMappinVariant.AimVariant
 	mappinData.visibleThroughWalls = true
 
 	local mappinId = Game.GetMappinSystem():RegisterMappin(mappinData, position)
@@ -223,6 +192,7 @@ function TargetingHelper.MarkPosition(position, variant)
 	pins[positionId] = { position = position, mappinId = mappinId }
 end
 
+---@param position Vector4
 function TargetingHelper.UnmarkPosition(position)
 	local positionId = tostring(position)
 

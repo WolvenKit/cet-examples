@@ -1,59 +1,53 @@
--- Convert CET version to number
--- 1.9.6  -> 1.0906
--- 1.12.2 -> 1.1202
--- next   -> 1.12021
-local cetVer = tonumber((GetVersion():gsub('^v(%d+)%.(%d+)%.(%d+)(.*)', function(major, minor, patch, wip)
-	return ('%d.%02d%02d%d'):format(major, minor, patch, (wip == '' and 0 or 1))
-end))) or 1.12
+local StashAnywhere = {}
 
-local function getMainStash() end
+---@return Stash
+function StashAnywhere.GetStashEntity()
+	return Game.FindEntityByID(EntityID.new({ hash = 16570246047455160070ULL }))
+end
 
-if cetVer > 1.1202 then
-	getMainStash = function()
-		local stashId = NewObject('entEntityID')
-		stashId.hash = 16570246047455160070ULL
+---@return gameItemData[]
+function StashAnywhere.GetStashItems()
+	local stash = StashAnywhere.GetStashEntity()
 
-		return Game.FindEntityByID(stashId)
-	end
-else
-	local stashEntity
+    if stash then
+		local success, items = Game.GetTransactionSystem():GetItemList(stash)
 
-	getMainStash = function()
-		return stashEntity
-	end
+		if success then
+			return items
+		end
+    end
 
-	registerForEvent('onInit', function()
-		Observe('Stash', 'GetDevicePS', function(self)
-			if self:GetEntityID().hash == 16570246047455160070ULL then
-				stashEntity = Game.FindEntityByID(self:GetEntityID())
-			end
-		end)
-	end)
+    return {}
+end
+
+function StashAnywhere.OpenStashMenu()
+	local stash = StashAnywhere.GetStashEntity()
+
+    if stash then
+        local openStashEvent = OpenStash.new()
+        openStashEvent:SetProperties()
+
+        stash:OnOpenStash(openStashEvent)
+    end
 end
 
 registerHotkey('OpenStash', 'Open stash', function()
-	local stash = getMainStash()
-
-    if stash then
-        local openEvent = NewObject('handle:OpenStash')
-        openEvent:SetProperties()
-    
-        stash:OnOpenStash(openEvent)
-    end
+	StashAnywhere.OpenStashMenu()
 end)
 
 registerHotkey('PrintStash', 'Print stash items', function()
-	local stash = getMainStash()
+	local items = StashAnywhere.GetStashItems()
 
-    if stash then
-        local success, items = Game.GetTransactionSystem():GetItemList(stash)
+    if #items > 0 then
+		print('[Stash] Total Items:', #items)
 
-		if success then
-			print('[Stash] Total Items:', #items)
+		for _, itemData in pairs(items) do
+			local itemID = itemData:GetID()
+			local recordID = itemID.id
 
-			for _, itemData in pairs(items) do
-				print('[Stash]', Game.GetLocalizedTextByKey(Game['TDB::GetLocKey;TweakDBID'](itemData:GetID().id + '.displayName')))
-			end
+			print('[Stash]', Game.GetLocalizedTextByKey(TDB.GetLocKey(recordID .. '.displayName')))
 		end
     end
 end)
+
+return StashAnywhere
