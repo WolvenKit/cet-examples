@@ -26,6 +26,13 @@ end
 registerForEvent('onInit', function()
 	printLoggingState()
 
+	local player = Game.GetPlayer()
+	player:RegisterInputListener(player)
+
+	Observe('PlayerPuppet', 'OnGameAttached', function(self)
+		self:RegisterInputListener(self)
+	end)
+
 	Observe('PlayerPuppet', 'OnAction', function(_, action)
 		if enableLogging then
 			local actionName = Game.NameToString(action:GetName())
