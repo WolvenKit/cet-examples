@@ -18,7 +18,9 @@ function TargetingHelper.GetLookAtPosition(distance)
 		from.z + forward.z * distance,
 		from.w
 	)
-
+	
+	-- Available filters
+	-- Player, AI, Dynamic, Vehicle, Tank, Destructible, Terrain, Collider, Particle, Ragdoll, Ragdoll Inner, Debris, Cloth, PlayerBlocker, VehicleBlocker, TankBlocker, DestructibleCluster, NPCBlocker
 	local filters = {
 		'Dynamic', -- Movable Objects
 		'Vehicle',
